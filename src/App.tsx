@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// CSS base y reseteo absoluto
+// CSS para animaciones de la terminal y reseteo global
 const terminalStyles = `
   :root, body, html {
     background-color: black !important;
     margin: 0;
     padding: 0;
     color-scheme: dark;
-    overflow: hidden; /* Prohibimos el scroll global */
   }
   @keyframes blink {
     0%, 100% { opacity: 1; }
@@ -43,17 +42,9 @@ const terminalStyles = `
     background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.4) 100%);
     z-index: 10;
   }
-  
-  /* Esconder barra de scroll webkit para que se vea limpio */
-  .hide-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .hide-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
 `;
 
+// Interfaces
 interface TypewriterProps {
   text: string;
   delay?: number;
@@ -67,6 +58,7 @@ interface HistoryItem {
   content: string;
 }
 
+// Renderizador de enlaces
 const renderTextWithLinks = (text: string) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -78,7 +70,7 @@ const renderTextWithLinks = (text: string) => {
         href={part} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className="text-cyan-400 underline hover:text-cyan-300 transition-all z-50 relative"
+        className="text-cyan-400 underline hover:text-cyan-300 transition-all z-50 relative break-all"
       >
         {part}
       </a>
@@ -88,6 +80,7 @@ const renderTextWithLinks = (text: string) => {
   );
 };
 
+// Componente Typewriter mejorado
 const Typewriter: React.FC<TypewriterProps> = ({ text, delay = 25, onComplete, fastForward = false, onType }) => {
   const [currentText, setCurrentText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -109,10 +102,10 @@ const Typewriter: React.FC<TypewriterProps> = ({ text, delay = 25, onComplete, f
     }
   }, [currentIndex, delay, text, onComplete, fastForward, onType]);
 
-  // CAMBIO CLAVE: whitespace-pre mantiene la forma del texto intacta siempre
-  return <span className="whitespace-pre">{renderTextWithLinks(currentText)}</span>;
+  return <span className="whitespace-pre-wrap">{renderTextWithLinks(currentText)}</span>;
 };
 
+// App Principal
 export default function App() {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([
@@ -121,21 +114,19 @@ export default function App() {
     { type: 'system', content: 'Escribe "help" para ver los comandos disponibles o "run seminario.exe" para acceder a la información confidencial.' }
   ]);
   const [isLocked, setIsLocked] = useState(false);
-  
   const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null); // Referencia al contenedor con scroll
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Nuevo sistema de scroll infalible
   const scrollToBottom = () => {
-    if (containerRef.current) {
-      // Usamos requestAnimationFrame para asegurar que el DOM ya se actualizó
-      requestAnimationFrame(() => {
-        if (containerRef.current) {
-          containerRef.current.scrollTop = containerRef.current.scrollHeight;
-        }
-      });
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'auto' });
     }
   };
+
+  useEffect(() => {
+    window.addEventListener('resize', scrollToBottom);
+    return () => window.removeEventListener('resize', scrollToBottom);
+  }, []);
 
   const asciiArt = `
    _____                _                  _       
@@ -158,15 +149,12 @@ ${asciiArt}
 > HORA:      06:00 PM
 > CÓDIGO:    ACCESO-CONCEDIDO-0x9F
 
-AGENDA DEL EVENTO:
-----------------------------------------
-[08:00 AM] - Inicialización y Registro
-[09:00 AM] - Keynote: El Futuro de la IA
-[10:30 AM] - Coffee Break
-[11:00 AM] - Taller: Ciberseguridad
-[01:00 PM] - System.exit(0): Almuerzo
 ========================================
+
 ¡Te esperamos, Ingeniero!
+
+========================================
+
 `;
 
   const handleCommand = (cmd: string) => {
@@ -179,7 +167,7 @@ AGENDA DEL EVENTO:
       case 'help':
         newHistory.push({ type: 'output', content: 'Comandos disponibles:\n  run seminario.exe  - Desencripta y muestra la invitación del evento\n  start              - Alias para "run seminario.exe"\n  whoami             - Muestra la identidad del usuario actual\n  clear              - Limpia la pantalla de la terminal\n  help               - Muestra este mensaje de ayuda' });
         setHistory(newHistory);
-        scrollToBottom();
+        setTimeout(scrollToBottom, 50);
         break;
       case 'clear':
         setHistory([]);
@@ -187,14 +175,14 @@ AGENDA DEL EVENTO:
       case 'whoami':
         newHistory.push({ type: 'output', content: 'invitado_ingenieria_001' });
         setHistory(newHistory);
-        scrollToBottom();
+        setTimeout(scrollToBottom, 50);
         break;
       case 'start':
       case 'run seminario.exe':
         setIsLocked(true);
         newHistory.push({ type: 'system', content: 'Ejecutando script de desencriptación...' });
         setHistory(newHistory);
-        scrollToBottom();
+        setTimeout(scrollToBottom, 50);
         
         setTimeout(() => {
           setHistory(prev => [...prev, { type: 'system', content: '[████████████████████] 100% Completado' }]);
@@ -211,9 +199,10 @@ AGENDA DEL EVENTO:
         }, 1200);
         break;
       default:
+        // LÍNEA CORREGIDA: Sin comillas invertidas problemáticas, solo strings normales.
         newHistory.push({ type: 'output', content: "bash: " + cmd + ": orden no encontrada. Escribe 'help' para ayuda." });
         setHistory(newHistory);
-        scrollToBottom();
+        setTimeout(scrollToBottom, 50);
     }
   };
 
@@ -239,30 +228,26 @@ AGENDA DEL EVENTO:
     <>
       <style>{terminalStyles}</style>
       
-      {/* USO DE h-[100dvh]: Altura dinámica que se adapta al teclado del celular */}
       <div 
-        className="h-[100dvh] bg-black text-green-500 font-mono text-[10px] sm:text-xs md:text-sm flex flex-col relative w-full overflow-hidden"
+        className="min-h-screen bg-black text-green-500 font-mono text-[10px] sm:text-xs md:text-sm p-3 sm:p-6 flex flex-col relative overflow-x-hidden"
         onClick={handleContainerClick}
         style={{ textShadow: '0 0 5px rgba(34, 197, 94, 0.4)' }}
       >
-        <div className="crt-overlay pointer-events-none"></div>
-        <div className="scanline pointer-events-none"></div>
+        <div className="crt-overlay"></div>
+        <div className="scanline"></div>
 
-        {/* CONTENEDOR INTERNO DE SCROLL: Esto soluciona el problema en celulares */}
-        <div 
-          ref={containerRef}
-          className="flex-1 overflow-y-auto overflow-x-auto hide-scrollbar z-20 w-full p-3 sm:p-6 pb-2"
-        >
-          <div className="max-w-4xl mx-auto flex flex-col space-y-2">
+        <div className="flex-grow flex flex-col z-20 max-w-4xl w-full mx-auto pb-10">
+          
+          <div className="flex flex-col space-y-2 mb-2">
             {history.map((item, index) => (
-              <div key={index}>
+              <div key={index} className="break-words">
                 {item.type === 'input' && (
-                  <div className="whitespace-pre-wrap">
+                  <div>
                     <span className="text-green-300">invitado@sistemas:~$</span> {item.content}
                   </div>
                 )}
                 {item.type === 'system' && (
-                  <div className="text-gray-400 italic whitespace-pre-wrap">
+                  <div className="text-gray-400 italic">
                     {item.content}
                   </div>
                 )}
@@ -272,7 +257,7 @@ AGENDA DEL EVENTO:
                   </div>
                 )}
                 {item.type === 'seminar-reveal' && (
-                  <div className="text-green-400 font-bold overflow-x-auto w-full hide-scrollbar">
+                  <div className="text-green-400 font-bold overflow-hidden w-full">
                     <Typewriter 
                       text={item.content} 
                       delay={12} 
@@ -284,35 +269,32 @@ AGENDA DEL EVENTO:
               </div>
             ))}
           </div>
-        </div>
 
-        {/* INPUT ESTÁTICO EN LA PARTE INFERIOR */}
-        <div className="z-20 w-full p-3 sm:p-6 pt-0 flex-shrink-0 bg-black">
-          <div className="max-w-4xl mx-auto">
-            {!isLocked && (
-              <form onSubmit={handleSubmit} className="flex items-center relative w-full">
-                <span className="text-green-300 mr-2 whitespace-nowrap">invitado@sistemas:~$</span>
-                <div className="flex-grow flex items-center relative overflow-hidden">
-                  <span className="pointer-events-none whitespace-pre break-all">
-                    {input}
-                  </span>
-                  <span className="cursor-blink flex-shrink-0"></span>
-                  
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="opacity-0 absolute inset-0 w-full h-full text-base"
-                    spellCheck="false"
-                    autoComplete="off"
-                    autoCapitalize="none"
-                    autoFocus
-                  />
-                </div>
-              </form>
-            )}
-          </div>
+          {!isLocked && (
+            <form onSubmit={handleSubmit} className="flex items-center flex-wrap relative z-30">
+              <span className="text-green-300 mr-2 whitespace-nowrap">invitado@sistemas:~$</span>
+              <div className="flex-grow flex items-center relative">
+                <span className="pointer-events-none whitespace-pre-wrap break-all">
+                  {input}
+                </span>
+                <span className="cursor-blink"></span>
+                
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  className="opacity-0 absolute inset-0 w-full h-full text-base"
+                  spellCheck="false"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoFocus
+                />
+              </div>
+            </form>
+          )}
+
+          <div ref={bottomRef} className="h-10 w-full flex-shrink-0"></div>
         </div>
       </div>
     </>
