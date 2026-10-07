@@ -150,9 +150,7 @@ ${asciiArt}
 > CÓDIGO:    ACCESO-CONCEDIDO-0x9F
 
 ========================================
-
 ¡Te esperamos, Ingeniero!
-
 ========================================
 
 `;
@@ -199,7 +197,6 @@ ${asciiArt}
         }, 1200);
         break;
       default:
-        // LÍNEA CORREGIDA: Sin comillas invertidas problemáticas, solo strings normales.
         newHistory.push({ type: 'output', content: "bash: " + cmd + ": orden no encontrada. Escribe 'help' para ayuda." });
         setHistory(newHistory);
         setTimeout(scrollToBottom, 50);
@@ -228,8 +225,9 @@ ${asciiArt}
     <>
       <style>{terminalStyles}</style>
       
+      {/* CAMBIO AQUÍ: pt-14 (Margen superior de 56px) px-3 pb-3 sm:p-6 */}
       <div 
-        className="min-h-screen bg-black text-green-500 font-mono text-[10px] sm:text-xs md:text-sm p-3 sm:p-6 flex flex-col relative overflow-x-hidden"
+        className="min-h-screen bg-black text-green-500 font-mono text-[10px] sm:text-xs md:text-sm pt-14 px-3 pb-3 sm:p-6 flex flex-col relative overflow-x-hidden"
         onClick={handleContainerClick}
         style={{ textShadow: '0 0 5px rgba(34, 197, 94, 0.4)' }}
       >
