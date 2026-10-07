@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// CSS para animaciones de la terminal y reseteo global del fondo
+// CSS para animaciones de la terminal y reseteo global
 const terminalStyles = `
   :root, body, html {
     background-color: black !important;
@@ -44,12 +44,13 @@ const terminalStyles = `
   }
 `;
 
-// Interfaces para TypeScript
+// Interfaces
 interface TypewriterProps {
   text: string;
   delay?: number;
   onComplete?: () => void;
   fastForward?: boolean;
+  onType?: () => void;
 }
 
 interface HistoryItem {
@@ -57,7 +58,7 @@ interface HistoryItem {
   content: string;
 }
 
-// Función para detectar URLs y convertirlas en enlaces clickables
+// Renderizador de enlaces
 const renderTextWithLinks = (text: string) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
@@ -69,7 +70,7 @@ const renderTextWithLinks = (text: string) => {
         href={part} 
         target="_blank" 
         rel="noopener noreferrer" 
-        className="text-cyan-400 underline hover:text-cyan-300 hover:shadow-cyan-500/50 transition-all z-50 relative"
+        className="text-cyan-400 underline hover:text-cyan-300 transition-all z-50 relative break-all"
       >
         {part}
       </a>
@@ -79,8 +80,8 @@ const renderTextWithLinks = (text: string) => {
   );
 };
 
-// Componente Typewriter
-const Typewriter: React.FC<TypewriterProps> = ({ text, delay = 25, onComplete, fastForward = false }) => {
+// Componente Typewriter mejorado
+const Typewriter: React.FC<TypewriterProps> = ({ text, delay = 25, onComplete, fastForward = false, onType }) => {
   const [currentText, setCurrentText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -89,6 +90,7 @@ const Typewriter: React.FC<TypewriterProps> = ({ text, delay = 25, onComplete, f
       const timeout = setTimeout(() => {
         setCurrentText(prev => prev + text[currentIndex]);
         setCurrentIndex(prev => prev + 1);
+        if (onType) onType();
       }, fastForward ? 5 : delay);
       
       return () => clearTimeout(timeout);
@@ -98,12 +100,12 @@ const Typewriter: React.FC<TypewriterProps> = ({ text, delay = 25, onComplete, f
       }, 500);
       return () => clearTimeout(completeTimeout);
     }
-  }, [currentIndex, delay, text, onComplete, fastForward]);
+  }, [currentIndex, delay, text, onComplete, fastForward, onType]);
 
   return <span className="whitespace-pre-wrap">{renderTextWithLinks(currentText)}</span>;
 };
 
-// Componente Principal
+// App Principal
 export default function App() {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<HistoryItem[]>([
@@ -115,6 +117,17 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  const scrollToBottom = () => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  };
+
+  useEffect(() => {
+    window.addEventListener('resize', scrollToBottom);
+    return () => window.removeEventListener('resize', scrollToBottom);
+  }, []);
+
   const asciiArt = `
    _____                _                  _       
   / ____|              (_)                (_)      
@@ -125,26 +138,30 @@ export default function App() {
   `;
 
   const seminarDetails = `
-==================================================
+========================================
 ${asciiArt}
-==================================================
-> TÍTULO:    Seminario de Ingeniería en Sistemas 2026
+========================================
+> TÍTULO:    Seminario de Ing. en Sistemas 2026
 > FECHA:     Sábado, 24 de Octubre de 2026
-> LUGAR:     Hostal Las Marias, Taxisco, Santa Rosa
-> UBICACIÓN: https://lix.li/ZUOz6 (googel maps) | https://lix.li/kCWXCi (waze)
+> LUGAR:     Hostal Las Marias, Taxisco
+> UBICACIÓN: https://lix.li/ZUOz6 (Maps)
+             https://lix.li/kCWXCi (Waze)
 > HORA:      06:00 PM
 > CÓDIGO:    ACCESO-CONCEDIDO-0x9F
 
-==================================================
-
+AGENDA DEL EVENTO:
+----------------------------------------
+[08:00 AM] - Inicialización y Registro
+[09:00 AM] - Keynote: El Futuro de la IA
+[10:30 AM] - Coffee Break
+[11:00 AM] - Taller: Ciberseguridad
+[01:00 PM] - System.exit(0): Almuerzo
+========================================
 ¡Te esperamos, Ingeniero!
-
-==================================================
 `;
 
   const handleCommand = (cmd: string) => {
     const cleanCmd = cmd.trim().toLowerCase();
-    
     if (!cleanCmd) return;
 
     const newHistory: HistoryItem[] = [...history, { type: 'input', content: cmd }];
@@ -153,28 +170,30 @@ ${asciiArt}
       case 'help':
         newHistory.push({ type: 'output', content: 'Comandos disponibles:\n  run seminario.exe  - Desencripta y muestra la invitación del evento\n  start              - Alias para "run seminario.exe"\n  whoami             - Muestra la identidad del usuario actual\n  clear              - Limpia la pantalla de la terminal\n  help               - Muestra este mensaje de ayuda' });
         setHistory(newHistory);
+        setTimeout(scrollToBottom, 50);
         break;
-      
       case 'clear':
         setHistory([]);
         break;
-      
       case 'whoami':
         newHistory.push({ type: 'output', content: 'invitado_ingenieria_001' });
         setHistory(newHistory);
+        setTimeout(scrollToBottom, 50);
         break;
-
       case 'start':
       case 'run seminario.exe':
         setIsLocked(true);
         newHistory.push({ type: 'system', content: 'Ejecutando script de desencriptación...' });
         setHistory(newHistory);
+        setTimeout(scrollToBottom, 50);
         
         setTimeout(() => {
           setHistory(prev => [...prev, { type: 'system', content: '[████████████████████] 100% Completado' }]);
+          scrollToBottom();
           
           setTimeout(() => {
              setHistory(prev => [...prev, { type: 'system', content: 'Acceso Concedido. Desplegando información...' }]);
+             scrollToBottom();
              
              setTimeout(() => {
                setHistory(prev => [...prev, { type: 'seminar-reveal', content: seminarDetails }]);
@@ -182,10 +201,11 @@ ${asciiArt}
           }, 800);
         }, 1200);
         break;
-
       default:
-        newHistory.push({ type: 'output', content: `bash: ${cmd}: orden no encontrada. Escribe "help" para ayuda.` });
+        // LÍNEA CORREGIDA: Sin comillas invertidas problemáticas, solo strings normales.
+        newHistory.push({ type: 'output', content: "bash: " + cmd + ": orden no encontrada. Escribe 'help' para ayuda." });
         setHistory(newHistory);
+        setTimeout(scrollToBottom, 50);
     }
   };
 
@@ -197,39 +217,29 @@ ${asciiArt}
   };
 
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    scrollToBottom();
   }, [history]);
 
   const handleContainerClick = (e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).tagName.toLowerCase() === 'a') {
-      return;
-    }
+    if ((e.target as HTMLElement).tagName.toLowerCase() === 'a') return;
     if (inputRef.current && !isLocked) {
       inputRef.current.focus();
     }
   };
-
-  useEffect(() => {
-    if (inputRef.current && !isLocked) {
-      inputRef.current.focus();
-    }
-  }, [isLocked]);
 
   return (
     <>
       <style>{terminalStyles}</style>
       
       <div 
-        className="min-h-screen bg-black text-green-500 font-mono text-sm sm:text-base p-4 sm:p-8 flex flex-col relative overflow-hidden"
+        className="min-h-screen bg-black text-green-500 font-mono text-[10px] sm:text-xs md:text-sm p-3 sm:p-6 flex flex-col relative overflow-x-hidden"
         onClick={handleContainerClick}
         style={{ textShadow: '0 0 5px rgba(34, 197, 94, 0.4)' }}
       >
         <div className="crt-overlay"></div>
         <div className="scanline"></div>
 
-        <div className="flex-grow flex flex-col z-20 max-w-4xl mx-auto w-full">
+        <div className="flex-grow flex flex-col z-20 max-w-4xl w-full mx-auto pb-10">
           
           <div className="flex flex-col space-y-2 mb-2">
             {history.map((item, index) => (
@@ -239,25 +249,23 @@ ${asciiArt}
                     <span className="text-green-300">invitado@sistemas:~$</span> {item.content}
                   </div>
                 )}
-                
                 {item.type === 'system' && (
                   <div className="text-gray-400 italic">
                     {item.content}
                   </div>
                 )}
-
                 {item.type === 'output' && (
                   <div className="whitespace-pre-wrap">
                     {item.content}
                   </div>
                 )}
-
                 {item.type === 'seminar-reveal' && (
-                  <div className="text-green-400 font-bold">
+                  <div className="text-green-400 font-bold overflow-hidden w-full">
                     <Typewriter 
                       text={item.content} 
-                      delay={10} 
+                      delay={12} 
                       onComplete={() => setIsLocked(false)} 
+                      onType={scrollToBottom}
                     />
                   </div>
                 )}
@@ -268,26 +276,28 @@ ${asciiArt}
           {!isLocked && (
             <form onSubmit={handleSubmit} className="flex items-center flex-wrap relative z-30">
               <span className="text-green-300 mr-2 whitespace-nowrap">invitado@sistemas:~$</span>
-              <div className="flex-grow flex items-center bg-transparent relative">
+              <div className="flex-grow flex items-center relative">
+                <span className="pointer-events-none whitespace-pre-wrap break-all">
+                  {input}
+                </span>
+                <span className="cursor-blink"></span>
+                
                 <input
                   ref={inputRef}
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  className="bg-transparent text-transparent caret-transparent outline-none absolute inset-0 w-full"
+                  className="opacity-0 absolute inset-0 w-full h-full text-base"
                   spellCheck="false"
                   autoComplete="off"
+                  autoCapitalize="none"
                   autoFocus
                 />
-                <span className="pointer-events-none whitespace-pre">
-                  {input}
-                </span>
-                <span className="cursor-blink"></span>
               </div>
             </form>
           )}
 
-          <div ref={bottomRef} className="h-4 w-full"></div>
+          <div ref={bottomRef} className="h-10 w-full flex-shrink-0"></div>
         </div>
       </div>
     </>
